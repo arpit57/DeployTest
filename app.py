@@ -44,6 +44,10 @@ for link in article_links:
 summaries = []
 percentages = []
 
+nltk.data.path.append('./nltk_data/') # set the path to the NLTK data directory
+# nltk.download('punkt', download_dir='./nltk_data/') # download the 'punkt' resource to the NLTK data directory
+
+
 for n, i in enumerate(l):
     # Split the paragraph into sentences
     sentences = nltk.sent_tokenize(i)

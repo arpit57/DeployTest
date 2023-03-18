@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 import streamlit as st
 import pickle
 import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble import RandomForestClassifier
 
 
 

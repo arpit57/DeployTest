@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import streamlit as st
 import pickle
-import spacy
+import nltk
 
 
 
@@ -39,15 +39,36 @@ for link in article_links:
     article_text = article_soup.find("div", class_="clearfix").get_text()
     l.append(article_text)
 
-nlp = pickle.load(open("save.p", "rb"))
 
 
 summaries = []
 percentages = []
 
+for n, i in enumerate(l):
+    # Split the paragraph into sentences
+    sentences = nltk.sent_tokenize(i)
+    
+    vectorizer = TfidfVectorizer(stop_words='english')
+    X = vectorizer.fit_transform(sentences)
+    
+    y = [1 if i < len(sentences)//2 else 0 for i in range(len(sentences))]  # label the first half of sentences as important
+    clf = RandomForestClassifier()
+    clf.fit(X, y)
+    
+    important_indices = clf.predict(X).nonzero()[0]  # get the indices of the important sentences
+    summary = ' '.join([sentences[i] for i in sorted(important_indices)])  # concatenate the important sentences into the summary
+    summary_percentage = round(len(summary) / len(l[n]) *100, 1)
+
+    # print(f"{summary} {len(summary)} / {len(l[n])} \n")
+    summaries.append(summary)
+    percentages.append(summary_percentage)
+
+
 
 st.title("Daily Tech stories summarizer")
 text = " Read full article here"
 
-for i in l:
-	st.write(i)
+for n, i in enumerate(summaries):
+	st.write(i + "<a href='" + links[n] + "'>" + text + "</a>", unsafe_allow_html=True)
+	# st.write("<a href='" + links[n] + "'>" + text + "</a>", unsafe_allow_html=True)
+	st.write("\n")

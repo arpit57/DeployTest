@@ -2,6 +2,8 @@
 import requests
 from bs4 import BeautifulSoup
 import streamlit as st
+import pickle
+
 
 
 # specify the URL of the news website to scrape
@@ -34,6 +36,12 @@ for link in article_links:
 #     # find the main text content of the article and print it
     article_text = article_soup.find("div", class_="clearfix").get_text()
     l.append(article_text)
+
+nlp = pickle.load(open("save.p", "rb"))
+
+
+summaries = []
+percentages = []
 
 
 st.title("Daily Tech stories summarizer")

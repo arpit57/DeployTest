@@ -1,34 +1,62 @@
+
+import requests
+from bs4 import BeautifulSoup
 import streamlit as st
-import pickle
-import numpy as np
-import pandas as pd
-st.title("Movie Recommender")
-
-movies = pickle.load(open("movie_list.pkl", "rb"))
-
-s0 = pickle.load(open("similarity.pkl_0.pkl", 'rb'))
-s1 = pickle.load(open("similarity.pkl_1.pkl", 'rb'))
-s2 = pickle.load(open("similarity.pkl_2.pkl", 'rb'))
-s3 = pickle.load(open("similarity.pkl_3.pkl", 'rb'))
-s4 = pickle.load(open("similarity.pkl_4.pkl", 'rb'))
-
-similarity = np.concatenate((s0, s1, s2, s3, s4))
-# similarity = pickle.load(open("similarity.pkl", 'rb'))
-# print(movies)
-selectedMovie = st.selectbox("", movies.title)
+from transformers import pipeline
+import re
 
 
 
-def recommend(movie):
-    index = movies[movies['title'].apply(lambda x:x.lower()) == movie.lower()].index[0]
-    distances = sorted(list(enumerate(similarity[index])),reverse=True,key = lambda x: x[1])
-    l = []
-    for i in distances[1:11]:
-        l.append(f"{movies.iloc[i[0]].title:<60} {movies.iloc[i[0]].year:<10} {movies.iloc[i[0]].rating}")
-        # print(f"{movies.iloc[i[0]].title} ({movies.iloc[i[0]].year}, {movies.iloc[i[0]].rating}*)")
-    return l
+# specify the URL of the news website to scrape
+url = "https://www.theverge.com/"
 
-if st.button("Recommend"):
-    st.text(f"{'Title' : <60} {'Year' : <10} {'Rating'}")
-    for i in recommend(selectedMovie):
-            st.text(i)
+# send a GET request to the website URL and store the response
+response = requests.get(url)
+
+# parse the HTML content of the response using BeautifulSoup
+soup = BeautifulSoup(response.content, "html.parser")
+
+# find all the news article links on the website
+article_links = soup.find_all("a", class_="group-hover:shadow-underline-franklin")
+
+l = []
+links = []
+
+# loop through each article link and scrape the article text
+for link in article_links:
+    # extract the URL of the article
+    article_url = link["href"]
+    
+    # send a GET request to the article URL and store the response
+    article_response = requests.get(url + article_url)
+    links.append(url + article_url)
+
+#     # parse the HTML content of the article using BeautifulSoup
+    article_soup = BeautifulSoup(article_response.content, "html.parser")
+    
+#     # find the main text content of the article and print it
+    article_text = article_soup.find("div", class_="clearfix").get_text()
+    l.append(article_text)
+
+def get_first_thousand_words(text):
+    words = re.findall(r'\b\w+\b|[^\w\s]', text)
+    return ' '.join(words[:800])
+
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+summaries = []
+for i in l:
+    i = get_first_thousand_words(i)
+
+    summaries.append(summarizer(i, max_length=300, min_length=100))
+
+summariesText = [i[0]["summary_text"] for i in summaries]
+
+
+
+st.title("Daily Tech stories summarizer")
+text = " Read full article here"
+
+for n, i in enumerate(summariesText):
+	st.write(i + "<a href='" + links[n] + "'>" + text + "</a>", unsafe_allow_html=True)
+	# st.write("<a href='" + links[n] + "'>" + text + "</a>", unsafe_allow_html=True)
+	st.write("\n")
